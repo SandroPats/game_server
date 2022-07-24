@@ -1,0 +1,120 @@
+print("current turn is ", ?turn);
+$expences := ?raw(?my_id)*300 + ?production(?my_id)*500
+		+ ?factories(?my_id)*1000;
+$prodsum := 0;
+$prod_average := 0;
+$raw_average := 0;
+$prod_max := 0;
+$raw_max := 0;
+$i := 1;
+while ($i < ?active_players + 1) {
+	$prodsum := $prodsum + ?production($i);
+	$res_prod_price := ?result_prod_price($i);
+	$res_raw_price := ?result_raw_price($i);
+	if ($res_prod_price & ($i < ?my_id | $i > ?my_id)) {
+		$diff := $prev_prod_price - $res_prod_price;
+		$prod_average := $prod_average + $diff;
+		if ($diff > $prod_max)
+			$prod_max := $diff;
+	}
+	if ($res_raw_price & ($i < ?my_id | $i > ?my_id)) {
+		$diff := $res_raw_price - $prev_raw_price;
+		$raw_average := $raw_average + $diff;
+		if ($diff > $_raw_max)
+			$raw_max := $diff;
+	}
+	$i := $i + 1;
+}
+$prod_average := $prod_average /($i - 2);
+print("prod average: ", $prod_average);
+print("prod max: ", $prod_max);
+$raw_average := $raw_average /($i - 2);
+if (?turn > 1) {
+	$turn := ?turn - 1;
+	$p_av[$turn] := $prod_average;
+	$p_max[$turn] := $prod_max;
+	$r_av[$turn] := $raw_average;
+	$r_max[$turn] := $raw_max;
+	$x_sum := $x_sum + $turn;
+	$xsqr_sum := $xsqr_sum + $turn * $turn;
+	$xp_av_sum := $xp_av_sum + $turn * $p_av[$turn];
+	$xp_max_sum := $xp_max_sum + $turn * $p_max[$turn];
+	$p_av_sum := $p_av_sum + $p_av[$turn];
+	$p_max_sum := $p_max_sum + $p_max[$turn];
+	$xr_av_sum := $xr_av_sum + $turn * $r_av[$turn];
+	$xr_max_sum := $xr_max_sum + $turn * $r_max[$turn];
+	$r_av_sum := $r_av_sum + $r_av[$turn];
+	$r_max_sum := $r_max_sum + $r_max[$turn];
+	if ($turn > 1) {
+		$bp_av := ($turn * $xp_av_sum - $x_sum * $p_av_sum)/
+				($turn * $xsqr_sum - $x_sum*$x_sum);
+		$bp_max := ($turn * $xp_max_sum - $x_sum * $p_max_sum)/
+				($turn * $xsqr_sum - $x_sum*$x_sum);
+		$br_av := ($turn * $xr_av_sum - $x_sum * $r_av_sum)/
+				($turn * $xsqr_sum - $x_sum*$x_sum);
+		$br_max := ($turn * $xr_max_sum - $x_sum * $r_max_sum)/
+				($turn * $xsqr_sum - $x_sum*$x_sum);
+	}
+	$ap_av := ($p_av_sum - $bp_av * $x_sum)/$turn;
+	$ap_max := ($p_max_sum - $bp_max * $x_sum)/$turn;
+	$ar_av := ($r_av_sum - $br_av * $x_sum)/$turn;
+	$ar_max := ($r_max_sum - $br_max * $x_sum)/$turn;
+	$p_av_cur := ?turn * $bp_av + $ap_av;
+	$p_max_cur := ?turn * $bp_max + $ap_max;
+	$r_av_cur := ?turn * $br_av + $ar_av;
+	$r_max_cur := ?turn * $br_max + $ar_max;
+	print("p_max_cur : ", $p_max_cur);
+	print("ap_max : ", $ap_max);
+	print("bp_max : ", $bp_max);
+}
+$toprod := ?raw(?my_id);
+$my_money := ?money(?my_id);
+$my_factories := ?factories(?my_id);
+if ($toprod > $my_factories)
+	$toprod := $my_factories;
+while ($toprod*2000 > $my_money)
+	$toprod := $toprod - 1;
+$expences := $expences + $toprod*2000;
+prod $toprod;
+$risk := $my_money - $expences;
+if (?raw(?my_id) < $my_factories) {
+	$purchase_price := ?raw_price + $r_max_cur;
+	buy $my_factories, $purchase_price;
+	$risk := $risk - $my_factories*(?raw_price + $r_max_cur);
+} else {
+	$tobuy := $my_factories;
+	while ($risk - $tobuy*(?raw_price + $r_av_cur) < 0 &
+		$tobuy > 0)
+	{
+		$tobuy := $tobuy - 1;
+	}
+	if ($tobuy) {
+		$purchase_price := ?raw_price + $r_av_cur;
+		buy $tobuy, $purchase_price;
+		$risk := $risk + $tobuy*(?raw_price + $r_av_cur);
+	} else {
+		$tobuy := 1;
+		$purchase_price := ?raw_price;
+		buy $tobuy, ?raw_price;
+		$risk := $risk + $tobuy*?raw_price;
+	}
+}
+if ($prodsum < ?demand + 1)
+	$sale_price := ?production_price;
+else if ($risk > 0)
+	$sale_price := ?production_price - $p_av_cur - 1;
+else
+	$sale_price := ?production_price - $p_max_cur - 1;
+$tosell := ?production(?my_id);
+if ($tosell > ?demand)
+	$tosell := ?demand;
+sell $tosell, $sale_price;
+if ($risk > 10000)
+	build;
+print("sale price: ", $sale_price);
+print("to sell: ", $tosell);
+print("purchase price: ", $purchase_price);
+print("to buy: ", $tobuy);
+$prev_prod_price := ?production_price;
+$prev_raw_price := ?raw_price;
+endturn;

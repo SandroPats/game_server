@@ -1,0 +1,21 @@
+$iter := 0;
+while ($iter < 2) {
+	print("Current month is", ?turn);
+	$pprice := ?production_price;
+	if (?demand = ?active_players)
+		sell ?production(?my_id), $pprice - 501;
+	else if (?demand < ?active_players*2)
+		sell ?production(?my_id), $pprice - 1;
+	else
+		sell ?production(?my_id), $pprice;
+	$rprice := ?raw_price;
+	$expenses := 300*?raw(?my_id) + 500*?production(?my_id) + 1000*?factories(?my_id);
+	$p := 1;
+	if ($p > 0)
+		prod $p;
+	$r := 1;
+	if ($r > 0)
+		buy $r, $rprice;
+	endturn;
+	$iter := $iter + 1;
+}
